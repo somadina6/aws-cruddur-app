@@ -1,0 +1,52 @@
+tasks:
+  - name: aws-cli
+    env:
+      AWS_CLI_AUTO_PROMPT: on-partial
+    command: |
+      cd /workspace
+      curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+      unzip awscliv2.zip
+      sudo ./aws/install
+      rm -rf awscliv2.zip aws;
+      cd $THEIA_WORKSPACE_ROOT
+      export GITPOD_IP=$(curl ifconfig.me)
+      aws ec2 modify-security-group-rules \
+      --group-id $DB_SG_ID \
+      --security-group-rules "SecurityGroupRuleId=$DB_SG_RULE_ID,SecurityGroupRule={Description=GITPOD,IpProtocol=tcp,FromPort=5432,ToPort=5432,CidrIpv4=$GITPOD_IP/32}";
+      cd /workspace
+
+  - name: postgres
+    command: |
+      curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc|sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/postgresql.gpg
+      echo "deb http://apt.postgresql.org/pub/repos/apt/ `lsb_release -cs`-pgdg main" |sudo tee  /etc/apt/sources.list.d/pgdg.list
+      sudo apt update
+      sudo apt install -y postgresql-client-13 libpq-dev
+      cd $THEIA_WORKSPACE_ROOT 
+      source backend-flask/bin/db-connect.sh
+
+  - name: react-react-js
+    command: |
+      cd frontend-react-js
+      npm i
+
+  - name: run docker
+    command: |
+      cd $THEIA_WORKSPACE_ROOT
+      docker compose  -f "docker-compose.yml" up -d --build xray-daemon backend-flask frontend-react-js
+
+vscode:
+  extensions:
+    - 42Crunch.vscode-openapi
+    - esbenp.prettier-vscode
+
+ports:
+  - name: frontend
+    port: 3000
+    onOpen: open-browser
+    visibility: public
+  - name: backend
+    port: 4567
+    visibility: public
+  - name: xray-daemon
+    port: 2000
+    visibility: public
